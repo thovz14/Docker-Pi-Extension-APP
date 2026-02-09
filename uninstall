@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# Verwijder de bestanden
+rm -rf "$HOME/.local/share/dockerpi"
+sudo rm /usr/share/applications/dockerpi.desktop
+
+# Verwijder de geïnstalleerde pakketten via Pi-Apps functie
+purge_packages
