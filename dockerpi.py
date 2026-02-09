@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 import subprocess
+import threading
 import os
 
 class DockerPiApp:
@@ -34,42 +35,38 @@ class DockerPiApp:
         else:
             self.show_setup_screen()
 
-    # --- SCHERM 2: SETUP / CREATE ---
+    # --- SCHERM 2: CREATE WINDOW ---
     def show_setup_screen(self):
-        # Maak een popup venster voor de instellingen
-        create_win = tk.Toplevel(self.root)
-        create_win.title("Create New Container")
-        create_win.geometry("400x550")
-        create_win.configure(bg="#2d2d2d")
-        create_win.transient(self.root)
+        self.clear_screen()
+        
+        # Terug knop naar dashboard
+        tk.Button(self.root, text="← Back", command=self.show_dashboard, bg="#444", fg="white").pack(anchor="nw", padx=10, pady=10)
 
-        tk.Label(create_win, text="New Container Settings", font=("Arial", 14, "bold"), fg="white", bg="#2d2d2d").pack(pady=20)
+        tk.Label(self.root, text="New Container Settings", font=("Arial", 18, "bold"), fg="white", bg="#1e1e1e").pack(pady=10)
 
-        # Container Naam
-        tk.Label(create_win, text="Container Name:", fg="white", bg="#2d2d2d").pack()
-        name_entry = tk.Entry(create_win, width=30)
-        name_entry.insert(0, "my-awesome-pi-app")
+        # Formulier Frame
+        form = tk.Frame(self.root, bg="#1e1e1e")
+        form.pack(pady=20)
+
+        tk.Label(form, text="Container Name:", fg="white", bg="#1e1e1e").pack()
+        name_entry = tk.Entry(form, width=30)
+        name_entry.insert(0, "my-app")
         name_entry.pack(pady=5)
 
-        # Docker Image
-        tk.Label(create_win, text="Docker Image (e.g. nginx, python, alpine):", fg="white", bg="#2d2d2d").pack()
-        image_entry = tk.Entry(create_win, width=30)
+        tk.Label(form, text="Docker Image (e.g. nginx):", fg="white", bg="#1e1e1e").pack()
+        image_entry = tk.Entry(form, width=30)
         image_entry.insert(0, "nginx")
         image_entry.pack(pady=5)
 
-        # Poort Mapping
-        tk.Label(create_win, text="Port Mapping (Host:Container - e.g. 8080:80):", fg="white", bg="#2d2d2d").pack()
-        port_entry = tk.Entry(create_win, width=30)
+        tk.Label(form, text="Port Mapping (Host:Container):", fg="white", bg="#1e1e1e").pack()
+        port_entry = tk.Entry(form, width=30)
         port_entry.insert(0, "8080:80")
         port_entry.pack(pady=5)
 
-        # Emoji Kiezen
-        tk.Label(create_win, text="Select Dashboard Emoji:", fg="white", bg="#2d2d2d").pack()
-        emoji_var = tk.StringVar(value="🐳")
-        emoji_dropdown = ttk.Combobox(create_win, textvariable=emoji_var, values=["🐳", "🚀", "🔥", "📦", "🤖", "🌐"])
-        emoji_dropdown.pack(pady=5)
-
-        def run_creation():
+        # Status tekst (Laden indicator)
+        status_label = tk.Label(self.root, text="", fg="#FFD700", bg="#1e1e1e", font=("Arial", 10, "italic"))
+        
+        def start_deploy():
             c_name = name_entry.get().strip()
             c_image = image_entry.get().strip()
             c_port = port_entry.get().strip()
@@ -78,24 +75,37 @@ class DockerPiApp:
                 messagebox.showerror("Error", "Name and Image are required!")
                 return
 
-            try:
-                # Bouw het docker command
-                # -d: background, --name: naam, -p: poorten
-                cmd = ["docker", "run", "-d", "--name", c_name]
-                if c_port:
-                    cmd.extend(["-p", c_port])
-                cmd.append(c_image)
+            # UI aanpassen voor laden
+            create_btn.config(state="disabled", text="Processing...")
+            status_label.config(text=f"Status: Pulling '{c_image}' and starting... \nThis may take a minute.")
+            status_label.pack(pady=10)
+            self.root.update()
 
-                messagebox.showinfo("Deploying", f"Downloading and starting {c_image}...")
-                subprocess.run(cmd, check=True)
-                
-                create_win.destroy()
-                self.show_dashboard()
-            except Exception as e:
-                messagebox.showerror("Docker Error", str(e))
+            def run_docker_task():
+                try:
+                    cmd = ["docker", "run", "-d", "--name", c_name]
+                    if c_port:
+                        cmd.extend(["-p", c_port])
+                    cmd.append(c_image)
+                    
+                    subprocess.run(cmd, check=True)
+                    
+                    # Bij succes terug naar dashboard
+                    self.root.after(0, self.show_dashboard)
+                except Exception as e:
+                    # Bij fout, knop weer aanzetten en fout tonen
+                    self.root.after(0, lambda: [
+                        create_btn.config(state="normal", text="CREATE & START"),
+                        status_label.config(text=""),
+                        messagebox.showerror("Docker Error", str(e))
+                    ])
 
-        tk.Button(create_win, text="CREATE & START", bg="#4CAF50", fg="white", font=("Arial", 12, "bold"),
-                  command=run_creation, pady=10, width=20).pack(pady=30)
+            # Start in achtergrond thread
+            threading.Thread(target=run_docker_task, daemon=True).start()
+
+        create_btn = tk.Button(self.root, text="CREATE & START", bg="#4CAF50", fg="white", font=("Arial", 12, "bold"),
+                              command=start_deploy, pady=10, width=20)
+        create_btn.pack(pady=20)
 
     # --- SCHERM 3: DASHBOARD ---
     def show_dashboard(self):
@@ -115,7 +125,6 @@ class DockerPiApp:
             for i, (c_id, name) in enumerate(container_list[:self.max_containers]):
                 status = self.get_container_status(name)
                 is_online = status == "running"
-                color = "#4CAF50" if is_online else "#f44336"
                 
                 frame = tk.Frame(self.root, bg="#2d2d2d", pady=10)
                 frame.pack(fill="x", padx=20, pady=5)
@@ -124,7 +133,8 @@ class DockerPiApp:
                 tk.Label(frame, text=name, font=("Arial", 12, "bold"), fg="white", bg="#2d2d2d").pack(side="left")
                 
                 tk.Button(frame, text="Manage", command=lambda n=name: self.show_info(n)).pack(side="right", padx=10)
-                tk.Label(frame, text=f"● {'Online' if is_online else 'Offline'}", fg=color, bg="#2d2d2d").pack(side="right", padx=10)
+                tk.Label(frame, text=f"● {'Online' if is_online else 'Offline'}", 
+                         fg="#4CAF50" if is_online else "#f44336", bg="#2d2d2d").pack(side="right", padx=10)
 
         count = min(len(container_list), 5)
         add_btn = tk.Button(self.root, text=f"Add a Container {count}/5", 
