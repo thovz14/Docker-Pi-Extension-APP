@@ -27,7 +27,7 @@ If you want to install it manually for testing, run this command in your termina
 * `icon-64.png`: Custom application icon.
 
 ## 👤 Author
-Developed by **thovz14**.
+Developed by **WonderLight Studio's** and **FlowyBearYT**.
 Special thanks to the Pi-Apps community for their amazing platform.
 
 ## ⚖️ License
