@@ -1,5 +1,7 @@
 # 🐳 DockerPi Extension
 
+[![badge](https://github.com/Botspot/pi-apps/blob/master/icons/badge.png?raw=true)](https://github.com/Botspot/pi-apps)
+
 A lightweight, user-friendly GUI for managing Docker containers on Raspberry Pi. Built with Python and Tkinter, featuring a modern design with the Fredoka font.
 
 ## ✨ Features
