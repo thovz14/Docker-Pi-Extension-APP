@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 import subprocess
 import os
+import time
 
 class DockerPiApp:
     def __init__(self, root):
@@ -51,8 +52,8 @@ class DockerPiApp:
     def create_default_container(self):
         try:
             # We gebruiken een unieke naam op basis van tijd om conflicten te voorkomen
-            import time
             name = f"Pi-Web-{int(time.time())}"
+            # Let op: argumenten zijn hier losse strings in een lijst
             subprocess.run(["docker", "run", "-d", "--name", name, "nginx"], check=True)
             messagebox.showinfo("Success", f"Container '{name}' created!")
             self.show_dashboard()
@@ -136,9 +137,16 @@ class DockerPiApp:
                               fg="#4CAF50" if status == "running" else "#f44336", bg="#1e1e1e")
         status_lbl.pack(pady=5)
 
-        def run_docker_cmd(cmd):
+        # HIER ZIT DE FIX VOOR DE DELETE KNOP
+        def run_docker_cmd(action):
             try:
-                subprocess.run(["docker", cmd, name], check=True)
+                # We splitsen het commando op in losse elementen voor de lijst
+                if action == "delete":
+                    full_cmd = ["docker", "rm", "-f", name]
+                else:
+                    full_cmd = ["docker", action, name]
+                
+                subprocess.run(full_cmd, check=True)
                 info_win.destroy()
                 self.show_dashboard() # DASHBOARD VERVERSEN
             except Exception as e:
@@ -147,9 +155,15 @@ class DockerPiApp:
         btn_frame = tk.Frame(info_win, bg="#1e1e1e")
         btn_frame.pack(pady=20)
 
-        tk.Button(btn_frame, text="START", width=10, bg="#4CAF50", fg="white", command=lambda: run_docker_cmd("start")).grid(row=0, column=0, padx=5)
-        tk.Button(btn_frame, text="STOP", width=10, bg="#ff9800", fg="white", command=lambda: run_docker_cmd("stop")).grid(row=0, column=1, padx=5)
-        tk.Button(btn_frame, text="DELETE", width=22, bg="#f44336", fg="white", command=lambda: run_docker_cmd("rm -f")).grid(row=1, column=0, columnspan=2, pady=10)
+        # De commands zijn nu aangepast naar simpele woorden die de functie verwerkt
+        tk.Button(btn_frame, text="START", width=10, bg="#4CAF50", fg="white", 
+                  command=lambda: run_docker_cmd("start")).grid(row=0, column=0, padx=5)
+        
+        tk.Button(btn_frame, text="STOP", width=10, bg="#ff9800", fg="white", 
+                  command=lambda: run_docker_cmd("stop")).grid(row=0, column=1, padx=5)
+        
+        tk.Button(btn_frame, text="DELETE", width=22, bg="#f44336", fg="white", 
+                  command=lambda: run_docker_cmd("delete")).grid(row=1, column=0, columnspan=2, pady=10)
 
 if __name__ == "__main__":
     root = tk.Tk()
