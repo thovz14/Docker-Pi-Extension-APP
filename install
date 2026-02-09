@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Gebruik de Pi-Apps functie om packages te installeren
+# We hebben python3-tk nodig voor de GUI en docker.io voor de containers
+install_packages python3-tk docker.io || error "Fout bij installeren van benodigdheden"
+
+# Voeg de huidige gebruiker toe aan de docker groep zodat sudo niet nodig is
+sudo usermod -aG docker $USER
+
+# Maak de installatiemap
+mkdir -p "$HOME/.local/share/dockerpi"
+
+# Download de python file (vervang dit later door jouw GitHub link)
+# Voor nu gaan we ervan uit dat dockerpi.py in dezelfde map staat
+cp dockerpi.py "$HOME/.local/share/dockerpi/dockerpi.py"
+
+# Maak de desktop shortcut
+echo "[Desktop Entry]
+Name=DockerPi Extension
+Comment=Beheer je docker containers op de Pi
+Exec=python3 $HOME/.local/share/dockerpi/dockerpi.py
+Icon=docker
+Terminal=false
+Type=Application
+Categories=Development;Utility;" | sudo tee /usr/share/applications/dockerpi.desktop
+
+echo "Installatie voltooid! Start de app via je menu."
