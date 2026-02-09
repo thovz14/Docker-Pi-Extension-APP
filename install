@@ -1,27 +1,50 @@
 #!/bin/bash
 
-# Gebruik de Pi-Apps functie om packages te installeren
-# We hebben python3-tk nodig voor de GUI en docker.io voor de containers
-install_packages python3-tk docker.io || error "Fout bij installeren van benodigdheden"
+# Stop on error
+set -e
 
-# Voeg de huidige gebruiker toe aan de docker groep zodat sudo niet nodig is
-sudo usermod -aG docker $USER
+# 1. Install dependencies
+# We include fonts-fredoka to ensure your UI looks perfect for every user
+install_packages python3-tk docker.io wget ca-certificates fonts-fredoka || error "Package installation failed"
 
-# Maak de installatiemap
-mkdir -p "$HOME/.local/share/dockerpi"
+# 2. Create application directory in the user's home folder
+# Using $HOME ensures it works for any username
+APP_DIR="$HOME/.local/share/dockerpi"
+mkdir -p "$APP_DIR"
 
-# Download de python file (vervang dit later door jouw GitHub link)
-# Voor nu gaan we ervan uit dat dockerpi.py in dezelfde map staat
-cp dockerpi.py "$HOME/.local/share/dockerpi/dockerpi.py"
+# 3. Download files from your GitHub repository (RAW)
+echo "Fetching files from GitHub..."
+wget -qN -O "$APP_DIR/dockerpi.py" "https://raw.githubusercontent.com/thovz14/Docker-Pi-Extension-APP/main/dockerpi.py"
+wget -qN -O "$APP_DIR/icon.png" "https://raw.githubusercontent.com/thovz14/Docker-Pi-Extension-APP/main/icon-64.png"
 
-# Maak de desktop shortcut
+# 4. Set permissions
+chmod +x "$APP_DIR/dockerpi.py"
+sudo usermod -aG docker "$USER"
+
+# 5. Create the Desktop Shortcut (Menu Entry)
+# We save this to the user's local applications folder for better compatibility
+DESKTOP_PATH="$HOME/.local/share/applications/dockerpi.desktop"
+mkdir -p "$HOME/.local/share/applications"
+
 echo "[Desktop Entry]
 Name=DockerPi Extension
-Comment=Beheer je docker containers op de Pi
-Exec=python3 $HOME/.local/share/dockerpi/dockerpi.py
-Icon=docker
+Comment=Manage your docker containers
+Exec=python3 $APP_DIR/dockerpi.py
+Icon=$APP_DIR/icon.png
 Terminal=false
 Type=Application
-Categories=Development;Utility;" | sudo tee /usr/share/applications/dockerpi.desktop
+Categories=Development;Utility;
+StartupNotify=true" > "$DESKTOP_PATH"
 
-echo "Installatie voltooid! Start de app via je menu."
+# Make the shortcut executable
+chmod +x "$DESKTOP_PATH"
+
+# 6. Refresh the desktop database to show the icon immediately
+update-desktop-database "$HOME/.local/share/applications" &>/dev/null || true
+
+echo "------------------------------------------------"
+echo "Installation complete!"
+echo "You can find DockerPi Extension in your menu."
+echo "NOTE: If this is your first time installing Docker,"
+echo "please REBOOT your Pi to apply group permissions."
+echo "------------------------------------------------"
