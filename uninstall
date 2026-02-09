@@ -1,8 +1,38 @@
 #!/bin/bash
 
-# Verwijder de bestanden
-rm -rf "$HOME/.local/share/dockerpi"
-sudo rm /usr/share/applications/dockerpi.desktop
+# Stop on error
+set -e
 
-# Verwijder de geïnstalleerde pakketten via Pi-Apps functie
+echo "Removing DockerPi Extension..."
+
+# 1. Define paths (identical to the install script)
+APP_DIR="$HOME/.local/share/dockerpi"
+DESKTOP_PATH="$HOME/.local/share/applications/dockerpi.desktop"
+
+# 2. Remove the application directory (contains code and icon)
+if [ -d "$APP_DIR" ]; then
+    rm -rf "$APP_DIR"
+    echo "Application files removed."
+fi
+
+# 3. Remove the menu shortcut
+if [ -f "$DESKTOP_PATH" ]; then
+    rm -f "$DESKTOP_PATH"
+    echo "Menu shortcut removed."
+fi
+
+# 4. Remove any system-wide shortcut if it exists
+sudo rm -f "/usr/share/applications/dockerpi.desktop"
+
+# 5. Remove dependencies that are no longer needed
 purge_packages
+
+# 6. Refresh the desktop database
+update-desktop-database "$HOME/.local/share/applications" &>/dev/null || true
+
+# Force a refresh of the taskbar menu (for Pi OS)
+lxpanelctl restart &>/dev/null || true
+
+echo "------------------------------------------------"
+echo "DockerPi Extension has been successfully removed."
+echo "------------------------------------------------"
